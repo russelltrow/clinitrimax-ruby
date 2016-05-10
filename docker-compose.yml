@@ -8,9 +8,16 @@ neo4j:
   volumes:
     - ./neo4j/data:/data
 
+rabbitmq:
+  image: rabbitmq:3-management
+  ports:
+    - '5672:5672'
+    - '15672:15672'
+
 app:
   build: .
   links:
     - neo4j
+    - rabbitmq
   volumes:
     - .:/app
