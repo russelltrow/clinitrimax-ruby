@@ -39,5 +39,3 @@ services:
       - rabbitmq
     volumes:
       - .:/app
-    command: ruby lib/producer.rb
-
