@@ -11,4 +11,8 @@ RUN apk update && \
 
 RUN mkdir /app
 WORKDIR /app
-COPY main.rb /app
+
+COPY Gemfile Gemfile
+RUN bundle install
+
+COPY . .
