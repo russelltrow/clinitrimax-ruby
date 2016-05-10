@@ -1,23 +1,43 @@
-neo4j:
-  image: neo4j:3.0
-  environment:
-    NEO4J_AUTH: none
-  ports:
-    - '7474:7474'
-    - '7687:7687'
-  volumes:
-    - ./neo4j/data:/data
+version: '2'
+services:
+  neo4j:
+    image: neo4j:3.0
+    environment:
+      NEO4J_AUTH: none
+    ports:
+      - '7474:7474'
+      - '7687:7687'
+    volumes:
+      - ./neo4j/data:/data
 
-rabbitmq:
-  image: rabbitmq:3-management
-  ports:
-    - '5672:5672'
-    - '15672:15672'
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - '5672:5672'
+      - '15672:15672'
 
-app:
-  build: .
-  links:
-    - neo4j
-    - rabbitmq
-  volumes:
-    - .:/app
+  consumer:
+    build: .
+    depends_on:
+      - neo4j
+      - rabbitmq
+    links:
+      - neo4j
+      - rabbitmq
+    volumes:
+      - .:/app
+    command: ruby lib/consumer.rb
+
+  producer:
+    build: .
+    depends_on:
+      - neo4j
+      - rabbitmq
+      - consumer
+    links:
+      - neo4j
+      - rabbitmq
+    volumes:
+      - .:/app
+    command: ruby lib/producer.rb
+
