@@ -2,6 +2,7 @@ neo4j:
   image: neo4j:3.0
   ports:
     - '7474:7474'
+    - '7687:7687'
   volumes:
     - ./neo4j/data:/data
 
@@ -11,4 +12,3 @@ app:
     - neo4j
   volumes:
     - .:/app
-  command: ruby main.rb
