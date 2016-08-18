@@ -1,20 +1,28 @@
 version: '2'
 services:
   neo4j:
-    image: neo4j:3.0
+    image: neo4j:3.0.3
     environment:
       NEO4J_AUTH: none
     ports:
       - '7474:7474'
-      - '7687:7687'
     volumes:
+      - ./neo4j/conf:/conf
       - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/plugins:/plugins
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - '5672:5672'
       - '15672:15672'
+
+  # elasticsearch:
+  #   image: elasticsearch
+  #   ports:
+  #     - "9200:9200"
+  #     - "9300:9300"
 
   consumer:
     build: .
@@ -33,7 +41,6 @@ services:
     depends_on:
       - neo4j
       - rabbitmq
-      - consumer
     links:
       - neo4j
       - rabbitmq

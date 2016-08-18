@@ -1,24 +1,29 @@
 # docker-compose run consumer ruby lib/consumer.rb
 
 require 'rubygems'
-require 'csv'
 require 'json'
 require 'bunny'
 require 'neo4j-core'
+require 'dotenv'
+require 'date'
+Dotenv.load
 
 begin
-  @queue_connection = Bunny.new(:hostname => "rabbitmq", :user => "guest", :password => "guest")
+  @queue_connection = Bunny.new(:hostname => ENV["RABBITMQ_ENDPOINT_HOSTNAME"], :user => ENV["RABBITMQ_USER"], :password => ENV["RABBITMQ_PASSWORD"])
   @queue_connection.start
+
   queue_channel = @queue_connection.create_channel
   queue  = queue_channel.queue("clinicaltrials")
-  queue_channel.prefetch(25)
-rescue
-   sleep(3)
-   retry
+  queue_channel.prefetch(ENV["RABBITMQ_CHANNEL_PREFETCH"].to_i)
+rescue Exception => e
+  puts e.inspect
+  puts "Trying to connect to Rabbit"
+  sleep(3)
+  retry
 end
 
 begin
-  @neo_session = Neo4j::Session.open(:server_db, "http://neo4j:7474")
+  @neo_session = Neo4j::Session.open(:server_db, "http://#{ENV["NEO4J_ENDPOINT_HOSTNAME"]}:#{ENV["NEO4J_ENDPOINT_PORT"]}")
 
   trial_label = Neo4j::Label.create(:Trial)
   trial_label.create_index(:nct)
@@ -26,9 +31,11 @@ begin
   phase_label.create_index(:title)
   intervention_label = Neo4j::Label.create(:Intervention)
   intervention_label.create_index(:title)
-rescue
-   sleep(3)
-   retry
+rescue Exception => e
+  puts e.inspect
+  puts "Trying to connect to Rabbit"
+  sleep(3)
+  retry
 end
 
 queue.subscribe(:block => true, :manual_ack => true) do |delivery_info, properties, payload|
@@ -40,7 +47,12 @@ queue.subscribe(:block => true, :manual_ack => true) do |delivery_info, properti
   end
 
   begin
-    trial_node = Neo4j::Node.create( { nct: trial['NCT_Number'], title: trial['Title'], rank: trial['Rank'], recruitment: trial['Recruitment'] }, :Trial )
+    # DateTime.now # "1384526946" (seconds)
+    trial_start_date = Date.parse(trial['First_Received'])
+    puts "Trial Start Date: #{trial_start_date.to_s}"
+    puts "Trial Epoch: #{trial_start_date.strftime('%Q')}"
+
+    trial_node = Neo4j::Node.create( { nct: trial['NCT_Number'], title: trial['Title'], rank: trial['Rank'], recruitment: trial['Recruitment'], timestamp: trial_start_date.strftime('%Q').to_i }, :Trial )
     puts "Created node #{trial_node[:NCT]} with labels #{trial_node.labels.join(', ')}"
 
     unless trial['Phases'].nil?
